@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>PromptShifter</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet"> 
+<style>
+  body {
+    font-family: Arial, Helvetica, sans-serif;
+  }
+  #container {
+    margin-left: 80px;
+    position: relative;
+  }
+  #promptParts {
+    border: 1px solid #ccc;
+    padding: 10px;
+    min-height: 100px;
+    margin-top: 20px; /* Add vertical space */
+  }
+  .promptPart {
+    border: 1px solid #ddd;
+    padding: 8px;
+    margin-bottom: 5px;
+    background-color: #f9f9f9;
+    cursor: default;
+    display: flex;
+    align-items: center;
+  }
+  .promptPart span {
+    flex-grow: 1;
+  }
+  .promptPart .buttons {
+    display: flex;
+    align-items: center;
+    margin-left: 10px;
+  }
+  .promptPart button {
+    padding: 5px 10px;
+    border: none;
+    border-radius: 5px;
+    font-size: 14px;
+    cursor: pointer;
+    margin-left: 5px;
+    background: linear-gradient(to bottom, #f2f2f2, #d9d9d9);
+    color: #333;
+  }
+  #outputPrompt {
+    margin-top: 20px;
+    padding: 8px;
+    border: 1px solid #ddd;
+    width: 80%;
+    min-height: 50px;
+    white-space: pre-wrap;
+    position: relative;
+  }
+  .active {
+    background: linear-gradient(to bottom, #ffd9b3, #f0c097);
+  }
+  #copyButton {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    padding: 10px 15px;
+    border: none;
+    border-radius: 8px;
+    font-size: 16px;
+    cursor: pointer;
+    background: linear-gradient(to bottom, #f2f2f2, #d9d9d9);
+    color: #333;
+  }
+  #topButtons {
+    position: absolute;
+    top: 50%;
+    left: -60px;
+    transform: translateY(-30%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  #topButtons button {
+    padding: 10px 15px;
+    border: none;
+    border-radius: 8px;
+    font-size: 16px;
+    cursor: pointer;
+    margin-bottom: 5px;
+    background: linear-gradient(to bottom, #f2f2f2, #d9d9d9);
+    color: #333;
+  }
+  #inputArea {
+    display: block;
+    text-align: left;
+  }
+  #inputButtons {
+    display: flex;
+    margin-top: 5px;
+  }
+  #inputButtons button {
+    padding: 10px 15px;
+    border: none;
+    border-radius: 8px;
+    font-size: 16px;
+    cursor: pointer;
+    margin-left: 5px;
+    background: linear-gradient(to bottom, #f2f2f2, #d9d9d9);
+    color: #333;
+  }
+  #clearButton {
+    padding: 10px 15px;
+    border: none;
+    border-radius: 8px;
+    font-size: 16px;
+    cursor: pointer;
+    margin-left: 0px;
+    background: linear-gradient(to bottom, #f2f2f2, #d9d9d9);
+    color: #333;
+  }
+ h1 {
+    font-family: 'Press Start 2P', cursive;
+    font-size: 3em;
+    background: linear-gradient(to right, #4477ff, #aa00ff, #ff0088);
+    -webkit-background-clip: text;
+    color: transparent;
+  }
+  #description {
+    color: #888;
+    font-size: 0.9em;
+    margin-bottom: 10px;
+  }
+  #footer {
+    text-align: center;
+    color: #888;
+    font-size: 0.8em;
+    margin-top: 20px;
+  }
+</style>
+<script>
+  let activePart = null;
+
+  function init() {
+    const promptInput = document.getElementById('promptInput');
+    const promptParts = document.getElementById('promptParts');
+    const outputPrompt = document.getElementById('outputPrompt');
+    const copyButton = document.getElementById('copyButton');
+
+    promptInput.addEventListener('change', updatePromptParts);
+
+    promptParts.addEventListener('click', (e) => {
+      const partElement = e.target.closest('.promptPart');
+      if (partElement) {
+        if (activePart) {
+          activePart.classList.remove('active');
+        }
+        activePart = partElement;
+        partElement.classList.add('active');
+      }
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if (activePart) {
+        if (e.key === 'ArrowUp') {
+          movePartUp(activePart);
+        } else if (e.key === 'ArrowDown') {
+          movePartDown(activePart);
+        }
+      }
+    });
+
+    copyButton.addEventListener('click', () => {
+      const textToCopy = document.getElementById('promptText').textContent;
+      navigator.clipboard.writeText(textToCopy)
+        .then(() => {
+          copyButton.textContent = 'Copied!';
+        })
+        .catch(err => {
+          console.error('Failed to copy text: ', err);
+        });
+    });
+  }
+
+  function updatePromptParts() {
+    const promptInput = document.getElementById('promptInput');
+    const promptParts = document.getElementById('promptParts');
+    const prompt = promptInput.value;
+    const parts = prompt.split(',').map(part => part.trim());
+
+    promptParts.innerHTML = '';
+    activePart = null;
+
+    parts.forEach(part => {
+      const partElement = document.createElement('div');
+      partElement.className = 'promptPart';
+
+      const textSpan = document.createElement('span');
+      textSpan.textContent = part;
+      partElement.appendChild(textSpan);
+
+      const toggleSwitch = document.createElement('input');
+      toggleSwitch.type = 'checkbox';
+
+      const buttonsDiv = document.createElement('div');
+      buttonsDiv.className = 'buttons';
+
+      toggleSwitch.addEventListener('change', () => {
+        toggleWeight(partElement, toggleSwitch, buttonsDiv);
+      });
+
+      partElement.appendChild(toggleSwitch);
+      partElement.appendChild(buttonsDiv);
+
+      partElement.addEventListener('click', () => {
+        if (activePart) {
+          activePart.classList.remove('active');
+        }
+        activePart = partElement;
+        partElement.classList.add('active');
+      });
+
+      promptParts.appendChild(partElement);
+    });
+    updateOutput();
+  }
+
+  function toggleWeight(element, toggle, buttonsDiv) {
+    const textSpan = element.querySelector('span');
+
+    if (toggle.checked) {
+      textSpan.textContent = `${textSpan.textContent}:1.0`;
+
+      const redButton = document.createElement('button');
+      redButton.textContent = '+';
+      redButton.addEventListener('click', () => adjustWeight(element, 0.1));
+
+      const blueButton = document.createElement('button');
+      blueButton.textContent = '-';
+      blueButton.addEventListener('click', () => adjustWeight(element, -0.1));
+
+      buttonsDiv.appendChild(redButton);
+      buttonsDiv.appendChild(blueButton);
+    } else {
+      const parts = textSpan.textContent.split(':');
+      textSpan.textContent = parts[0].trim();
+      buttonsDiv.innerHTML = '';
+    }
+    updateOutput();
+  }
+
+  function adjustWeight(element, change) {
+    const textSpan = element.querySelector('span');
+    let text = textSpan.textContent;
+    let weight = parseFloat(text.split(':')[1]);
+
+    weight = Math.max(0, weight + change);
+    textSpan.textContent = `${text.split(':')[0]}:${weight.toFixed(1)}`;
+    updateOutput();
+  }
+
+  function updateOutput() {
+    const promptParts = document.getElementById('promptParts');
+    const outputPrompt = document.getElementById('outputPrompt');
+    const copyButton = document.getElementById('copyButton');
+
+    const promptTextSpan = document.createElement('span');
+    promptTextSpan.id = 'promptText';
+
+    const reorderedParts = Array.from(promptParts.children).map(part => {
+      const textSpan = part.querySelector('span');
+      return textSpan.textContent;
+    });
+    promptTextSpan.textContent = reorderedParts.join(', ');
+
+    outputPrompt.innerHTML = '';
+    outputPrompt.appendChild(promptTextSpan);
+    outputPrompt.appendChild(copyButton);
+  }
+
+  function movePartUp(part) {
+    const prevSibling = part.previousElementSibling;
+    if (prevSibling) {
+      part.parentNode.insertBefore(part, prevSibling);
+      updateOutput();
+    }
+  }
+
+  function movePartDown(part) {
+    const nextSibling = part.nextElementSibling;
+    if (nextSibling) {
+      part.parentNode.insertBefore(nextSibling, part);
+      updateOutput();
+    }
+  }
+
+  function toggleAllWeights(enable) {
+    const promptParts = document.getElementById('promptParts');
+    const toggleSwitches = promptParts.querySelectorAll('input[type="checkbox"]');
+    toggleSwitches.forEach(toggle => {
+      toggle.checked = enable;
+      toggle.dispatchEvent(new Event('change'));
+    });
+  }
+
+  function clearInput() {
+    const promptInput = document.getElementById('promptInput');
+    promptInput.value = '';
+    promptInput.dispatchEvent(new Event('change'));
+  }
+
+  window.onload = init;
+</script>
+</head>
+<body>
+  <div id="container">
+    <div id="topButtons">
+      <button onclick="movePartUp(activePart)">&#x25B2;</button>
+      <button onclick="movePartDown(activePart)">&#x25BC;</button>
+    </div>
+
+    <h1>PromptShifter</h1>
+    <div id="description">
+      Use arrow keys to shift order. Apply weights using the toggle.
+    </div>
+
+    <div id="inputArea">
+      <label for="promptInput">Enter your prompt (comma-separated):</label><br>
+      <input type="text" id="promptInput" size="80">
+      <button id="clearButton" onclick="clearInput()">Clear Input</button><br> <div id="inputButtons">
+        <button onclick="toggleAllWeights(true)">Enable All</button>
+        <button onclick="toggleAllWeights(false)">Disable All</button>
+      </div>
+    </div>
+
+    <div id="promptParts"></div>
+    <h2>Reordered Prompt:</h2>
+    <div id="outputPrompt">
+      <button id="copyButton">Copy to Clipboard</button>
+    </div>
+
+    <div id="footer">
+      PromptShifter 1.0 for Stable Diffusion, VibeCoded by NukeDukem and Gemini 2.0 Flash (2025) 
+      <br> <a href="mailto:nukedukem@tutamail.com" style="color: #888;">Contact Me</a> </div>
+  </div>
+</body>
+</html>
