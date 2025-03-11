@@ -153,6 +153,24 @@
       font-size: 0.8em;
       margin-top: 20px;
     }
+
+    /* Updated input field styling */
+    #promptInput {
+      width: 600px; /* Increased horizontal space */
+      height: 60px; /* Increased vertical space (approx 3 lines) */
+      resize: none; /* Prevents manual resizing */
+      padding: 5px;
+      font-size: 16px;
+    }
+
+    /* Styling for editing input */
+    .promptPart input[type="text"] {
+      flex-grow: 1;
+      padding: 5px;
+      font-size: 14px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+    }
   </style>
   <script>
     let activePart = null;
@@ -167,7 +185,7 @@
 
       promptParts.addEventListener('click', (e) => {
         const partElement = e.target.closest('.promptPart');
-        if (partElement) {
+        if (partElement && !e.target.tagName.match(/INPUT|BUTTON/i)) {
           if (activePart) {
             activePart.classList.remove('active');
           }
@@ -176,8 +194,16 @@
         }
       });
 
+      // Add double-click event for editing
+      promptParts.addEventListener('dblclick', (e) => {
+        const partElement = e.target.closest('.promptPart');
+        if (partElement) {
+          startEditing(partElement);
+        }
+      });
+
       document.addEventListener('keydown', (e) => {
-        if (activePart) {
+        if (activePart && !document.querySelector('.promptPart input[type="text"]')) { // Prevent key events during editing
           if (e.key === 'ArrowUp') {
             movePartUp(activePart);
           } else if (e.key === 'ArrowDown') {
@@ -238,14 +264,6 @@
 
         partElement.appendChild(toggleSwitch);
         partElement.appendChild(buttonsDiv);
-
-        partElement.addEventListener('click', () => {
-          if (activePart) {
-            activePart.classList.remove('active');
-          }
-          activePart = partElement;
-          partElement.classList.add('active');
-        });
 
         promptParts.appendChild(partElement);
       });
@@ -344,6 +362,45 @@
       promptInput.dispatchEvent(new Event('change'));
     }
 
+    // New function for editing a prompt part
+    function startEditing(partElement) {
+      const textSpan = partElement.querySelector('span');
+      const currentText = textSpan.textContent;
+      const hasWeight = currentText.includes(':');
+      const baseText = hasWeight ? currentText.split(':')[0] : currentText;
+      const weight = hasWeight ? currentText.split(':')[1] : null;
+
+      // Replace span with input field
+      const editInput = document.createElement('input');
+      editInput.type = 'text';
+      editInput.value = baseText;
+      partElement.replaceChild(editInput, textSpan);
+
+      // Focus and select text
+      editInput.focus();
+      editInput.select();
+
+      // Save on Enter key
+      editInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          const newText = editInput.value.trim();
+          const newSpan = document.createElement('span');
+          newSpan.textContent = weight ? `${newText}:${weight}` : newText;
+          partElement.replaceChild(newSpan, editInput);
+          updateOutput();
+        }
+      });
+
+      // Optional: Blur to save (if you prefer this over Enter-only)
+      editInput.addEventListener('blur', () => {
+        const newText = editInput.value.trim();
+        const newSpan = document.createElement('span');
+        newSpan.textContent = weight ? `${newText}:${weight}` : newText;
+        partElement.replaceChild(newSpan, editInput);
+        updateOutput();
+      });
+    }
+
     window.onload = init;
   </script>
 </head>
@@ -351,18 +408,18 @@
 <body>
   <div id="container">
     <div id="topButtons">
-      <button onclick="movePartUp(activePart)">&#x25B2;</button>
-      <button onclick="movePartDown(activePart)">&#x25BC;</button>
+      <button onclick="movePartUp(activePart)">▲</button>
+      <button onclick="movePartDown(activePart)">▼</button>
     </div>
 
     <h1>PromptShifter</h1>
     <div id="description">
-      Use arrow keys to shift order. Apply weights using the toggle or press t. Update weights using the buttons or the = / - keys
+      Use arrow keys to shift order. Apply weights using the toggle or press t. Update weights using the buttons or the = / - keys. Double-click a part to edit.
     </div>
 
     <div id="inputArea">
       <label for="promptInput"><h2>Enter your prompt (comma-separated):</h2></label>
-      <input type="text" id="promptInput" size="80">
+      <textarea id="promptInput"></textarea>
       <button id="clearButton" onclick="clearInput()">Clear Input</button><br>
       <div id="inputButtons">
         <button onclick="toggleAllWeights(true)">Enable All</button>
@@ -383,4 +440,4 @@
   </div>
 </body>
 
-</html>
+</html>===--
